@@ -18,6 +18,7 @@
 
 #include "action.h"
 #include "board.h"
+#include "mcts.h"
 
 class agent {
  public:
@@ -104,5 +105,31 @@ class player : public random_agent {
 
  private:
   std::vector<action::place> space;
+  board::piece_type who;
+};
+
+class MCTSAgent : public agent {
+ public:
+  MCTSAgent(const std::string& args = "")
+      : agent("name=MCTSAgent role=unknown " + args) {
+    if (meta.find("simulation_count") != meta.end()) {
+      simulation_count = (int(meta["simulation_count"]));
+      std::cerr << simulation_count << '\n';
+    }
+    if (role() == "black") who = board::black;
+    if (role() == "white") who = board::white;
+    if (who == board::empty)
+      throw std::invalid_argument("invalid role: " + role());
+  }
+
+  virtual action take_action(const board& state) {
+    NoGoState no_go_state(state);
+    int act = MCTS(no_go_state, simulation_count);
+    if (act == -1) return action();
+    return action::place(act, board::black);
+  }
+
+ private:
+  int simulation_count;
   board::piece_type who;
 };
