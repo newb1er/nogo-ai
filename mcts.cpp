@@ -19,6 +19,7 @@ typedef struct _NoGoAction {
     if (currentIndex >= actions.size()) return -1;
     return actions[currentIndex++];
   }
+
 } NoGoAction;
 
 NoGoAction no_go_action;
@@ -26,7 +27,7 @@ NoGoAction no_go_action;
 int MCTS(State& state, int simulation_count = 100) {
   auto node = new Node(&state);
 
-  for (int i = 0; i < simulation_count; ++i) {
+  while (simulation_count--) {
     auto leaf = node;
 
     while (leaf->IsLeaf() == false) leaf = leaf->Selection();
@@ -37,16 +38,17 @@ int MCTS(State& state, int simulation_count = 100) {
   return node->GetBestAction();
 }
 
-Node::Node(State* state) : parent(nullptr), state(state) {}
+Node::Node(State* state) : value(0), parent(nullptr), state(state) {}
 
 Node* Node::Selection() const {
   // Select the best child.
-  double best_value = kids.at(0)->value / kids.at(0)->visits +
+  double best_value = (-1 * kids.at(0)->value / kids.at(0)->visits) +
                       sqrt(2 * log(visits) / kids.at(0)->visits);
   Node* best_child = kids.at(0);
   for (size_t i = 0; i < kids.size(); ++i) {
-    double value =
-        kids.at(i)->value + sqrt(2 * log(visits) / kids.at(i)->visits);
+    if (kids.at(i)->visits == 0) return kids.at(i);
+    double value = (-1 * kids.at(i)->value / kids.at(i)->visits) +
+                   sqrt(2 * log(visits) / kids.at(i)->visits);
     if (value > best_value) {
       best_value = value;
       best_child = kids.at(i);
@@ -63,14 +65,17 @@ Node* Node::Selection() const {
 }
 
 Node* Node::Expansion() {
+  std::vector<int> actions = state->GetPossibleActions();
+
   // Expand all the possible node.
-  for (int action = state->GetPossibleAction(); action != -1;
-       action = state->GetPossibleAction()) {
+  for (int action : actions) {
     Node* new_node = new Node(state->Clone());
     new_node->parent = this;
     new_node->state->ApplyAction(action);
     kids.push_back(new_node);
   }
+
+  if (kids.empty()) return this;
 
   // Select a random child.
   return kids.at(rand() % kids.size());
@@ -94,7 +99,7 @@ bool Node::IsLeaf() const { return kids.empty(); }
 
 int Node::GetBestAction() const {
   // Select the best action.
-  std::cerr << "root kid size: " << kids.size() << std::endl;
+  // std::cerr << "root kid size: " << kids.size() << std::endl;
   uint32_t best_visits = 0;
   int index = -1;
   for (size_t i = 0; i < kids.size(); ++i) {
@@ -106,8 +111,7 @@ int Node::GetBestAction() const {
 
   if (index == -1) {
     // No action was selected. This should never happen.
-    std::cerr << "No action was selected." << std::endl;
-    assert(false);
+    // std::cerr << "No action was selected." << std::endl;
     return -1;
   }
 
@@ -120,16 +124,21 @@ NoGoState::NoGoState(board b) : board_(b) {}
 
 double NoGoState::Rollout() {
   auto b_ = board_;
-  no_go_action.Reset();
   auto who = board_.info().who_take_turns;
 
-  for (int action = no_go_action.GetNext(); action != -1;
-       action = no_go_action.GetNext()) {
-    auto after = b_;
-    auto move = action::place(action, b_.info().who_take_turns);
+  int action = 0;
 
-    if (move.apply(after) == board::legal) {
-      b_ = after;
+  while (action != -1) {
+    no_go_action.Reset();
+    for (action = no_go_action.GetNext(); action != -1;
+         action = no_go_action.GetNext()) {
+      auto after = b_;
+      auto move = action::place(action, b_.info().who_take_turns);
+
+      if (move.apply(after) == board::legal) {
+        b_ = after;
+        break;
+      }
     }
   }
 
@@ -137,29 +146,27 @@ double NoGoState::Rollout() {
   return b_.info().who_take_turns == who ? -1.0f : 1.0f;
 }
 
-int NoGoState::GetPossibleAction() {
-  if (no_go_action.GetNext() == -1) {
-    no_go_action.Reset();
+std::vector<int> NoGoState::GetPossibleActions() {
+  no_go_action.Reset();
+
+  int action;
+  std::vector<int> actions;
+  actions.reserve(no_go_action.actions.size());
+
+  while ((action = no_go_action.GetNext()) != -1) {
+    auto b_ = board_;
+    auto move = action::place(action, b_.info().who_take_turns);
+    if (move.apply(b_) == board::legal) actions.push_back(action);
   }
 
-  for (int action = no_go_action.GetNext(); action != -1;
-       action = no_go_action.GetNext()) {
-    // std::cerr << action << '\n';
-    auto after = board_;
-    auto move = action::place(action, board_.info().who_take_turns);
-
-    if (move.apply(after) == board::legal) {
-      return action;
-    }
-
-    action = no_go_action.GetNext();
-  }
-
-  return -1;
+  return actions;
 }
 
 void NoGoState::ApplyAction(const int action) {
   auto move = action::place(action, board_.info().who_take_turns);
-  move.apply(board_);
+  if (move.apply(board_) != board::legal) {
+    std::cerr << "action should be legal\n";
+    assert(false);
+  }
   action_ = action;
 }

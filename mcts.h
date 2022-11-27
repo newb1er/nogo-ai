@@ -13,7 +13,7 @@ class State {
   virtual ~State() {}
   virtual State* Clone() { return this; };
   virtual double Rollout() {}
-  virtual int GetPossibleAction() { return -1; }
+  virtual std::vector<int> GetPossibleActions() { return std::vector<int>(); }
   virtual void ApplyAction(const int action) {}
   int GetAction() const;
 
@@ -45,7 +45,7 @@ class NoGoState : public State {
 
   virtual ~NoGoState() {}
   virtual double Rollout() override;
-  virtual int GetPossibleAction() override;
+  virtual std::vector<int> GetPossibleActions() override;
   virtual void ApplyAction(const int) override;
 
   //  private:
@@ -63,10 +63,11 @@ class Node {
   bool IsLeaf() const;
 
  private:
-  std::vector<Node*> kids;
-  Node* parent;
   uint32_t visits;
   double value;
+
+  Node* parent;
+  std::vector<Node*> kids;
   State* state;
 };
 
