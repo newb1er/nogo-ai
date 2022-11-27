@@ -112,9 +112,8 @@ class MCTSAgent : public agent {
  public:
   MCTSAgent(const std::string& args = "")
       : agent("name=MCTSAgent role=unknown " + args) {
-    if (meta.find("simulation_count") != meta.end()) {
-      simulation_count = (int(meta["simulation_count"]));
-      std::cerr << simulation_count << '\n';
+    if (meta.find("T") != meta.end()) {
+      simulation_count = (int(meta["T"]));
     }
     if (role() == "black") who = board::black;
     if (role() == "white") who = board::white;
@@ -126,7 +125,7 @@ class MCTSAgent : public agent {
     NoGoState no_go_state(state);
     int act = MCTS(no_go_state, simulation_count);
     if (act == -1) return action();
-    return action::place(act, board::black);
+    return action::place(act, who);
   }
 
  private:
