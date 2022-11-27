@@ -42,16 +42,20 @@ Node::Node(State* state) : value(0), parent(nullptr), state(state) {}
 
 Node* Node::Selection() const {
   // Select the best child.
-  double best_value = (-1 * kids.at(0)->value / kids.at(0)->visits) +
-                      sqrt(2 * log(visits) / kids.at(0)->visits);
-  Node* best_child = kids.at(0);
-  for (size_t i = 0; i < kids.size(); ++i) {
-    if (kids.at(i)->visits == 0) return kids.at(i);
-    double value = (-1 * kids.at(i)->value / kids.at(i)->visits) +
-                   sqrt(2 * log(visits) / kids.at(i)->visits);
-    if (value > best_value) {
-      best_value = value;
-      best_child = kids.at(i);
+
+  /* UCB1 */
+  double best_value = (-1 * kids.front()->value / kids.front()->visits) +
+                      sqrt(2 * log(visits) / kids.front()->visits);
+  Node* best_child = kids.front();
+  for (auto& kid : kids) {
+    if (kid->visits == 0) return kid;
+
+    double v =
+        (-1 * kid->value / kid->visits) + sqrt(2 * log(visits) / kid->visits);
+
+    if (v > best_value) {
+      best_value = v;
+      best_child = kid;
     }
   }
 
@@ -78,20 +82,22 @@ Node* Node::Expansion() {
   if (kids.empty()) return this;
 
   // Select a random child.
-  return kids.at(rand() % kids.size());
+  return kids.front();
 }
 
 void Node::Update() {
-  value = -1 * state->Rollout();
+  value = state->Rollout();
   visits++;
+
+  auto v = -value;
 
   // Backpropagtion
   Node* node = this;
   while (node->parent != nullptr) {
     node = node->parent;
     node->visits += 1;
-    node->value += value;
-    value = -value;
+    node->value += v;
+    v = -v;
   }
 }
 
