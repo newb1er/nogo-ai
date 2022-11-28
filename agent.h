@@ -9,6 +9,7 @@
 
 #pragma once
 #include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <map>
 #include <random>
@@ -18,6 +19,7 @@
 
 #include "action.h"
 #include "board.h"
+#include "mcts/mcts.h"
 
 class agent {
  public:
@@ -106,3 +108,57 @@ class player : public random_agent {
   std::vector<action::place> space;
   board::piece_type who;
 };
+
+class MCTSAgent : public agent {
+ public:
+  MCTSAgent(const std::string& args = "")
+      : agent("name=MCTSAgent role=unknown " + args) {
+    if (meta.find("T") != meta.end()) {
+      simulation_count = (int(meta["T"]));
+    }
+    if (role() == "black") who = board::black;
+    if (role() == "white") who = board::white;
+    if (who == board::empty)
+      throw std::invalid_argument("invalid role: " + role());
+  }
+
+  virtual action take_action(const board& state) {
+    NoGoState no_go_state(state);
+    int act = MCTS(no_go_state, simulation_count, true);
+    if (act == -1) return action();
+    return action::place(act, who);
+  }
+
+ private:
+  int simulation_count = 100;
+  board::piece_type who;
+};
+
+agent* make_agent(const std::string& args = "") {
+  std::string type;
+  auto first_space = args.find(" ");
+  auto first_equal = args.find("=");
+
+  if (first_space > first_equal) {
+    type = "random";
+  } else {
+    type = args.substr(0, first_space);
+  }
+
+  std::stringstream ss(args);
+  for (std::string pair; ss >> pair;) {
+    std::string key = pair.substr(0, pair.find('='));
+    std::string value = pair.substr(pair.find('=') + 1);
+    if (key == "search") type = value;
+  }
+
+  std::transform(type.begin(), type.end(), type.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+
+  if (type == "random") {
+    return new player(args);
+  } else if (type == "mcts") {
+    return new MCTSAgent(args);
+  }
+  return nullptr;
+}

@@ -40,11 +40,11 @@ class episode {
     ep_score += reward;
     return true;
   }
-  agent& take_turns(agent& black, agent& white) {
+  agent* take_turns(agent* black, agent* white) {
     ep_time = millisec();
     return (step() % 2) ? white : black;
   }
-  agent& last_turns(agent& black, agent& white) {
+  agent* last_turns(agent* black, agent* white) {
     return take_turns(white, black);
   }
 
