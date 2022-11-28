@@ -72,31 +72,31 @@ int main(int argc, const char* argv[]) {
   }
 
   // player black("name=black " + black_args + " role=black");
-  MCTSAgent black("name=black " + black_args + " role=black");
-  MCTSAgent white("name=white " + white_args + " role=white");
+  agent* black = make_agent(black_args + "name=black role=black");
+  agent* white = make_agent(white_args + "name=white role=white");
 
   if (!shell) {  // launch standard local games
     while (!stats.is_finished()) {
       //			std::cerr << "======== Game " << stats.step() <<
       //" ========" << std::endl;
-      black.open_episode("~:" + white.name());
-      white.open_episode(black.name() + ":~");
+      black->open_episode("~:" + white->name());
+      white->open_episode(black->name() + ":~");
 
-      stats.open_episode(black.name() + ":" + white.name());
+      stats.open_episode(black->name() + ":" + white->name());
       episode& game = stats.back();
       while (true) {
-        agent& who = game.take_turns(black, white);
-        action move = who.take_action(game.state());
+        agent* who = game.take_turns(black, white);
+        action move = who->take_action(game.state());
         //				std::cerr << game.state() << "#" <<
         // game.step() << " " << who.name() << ": " << move << std::endl;
         if (game.apply_action(move) != true) break;
-        if (who.check_for_win(game.state())) break;
+        if (who->check_for_win(game.state())) break;
       }
-      agent& win = game.last_turns(black, white);
-      stats.close_episode(win.name());
+      agent* win = game.last_turns(black, white);
+      stats.close_episode(win->name());
 
-      black.close_episode(win.name());
-      white.close_episode(win.name());
+      black->close_episode(win->name());
+      white->close_episode(win->name());
     }
   } else {  // launch GTP shell
     for (std::string command; std::getline(std::cin, command);) {
@@ -112,34 +112,35 @@ int main(int argc, const char* argv[]) {
       if (args[0] == "play" ||
           args[0] == "genmove") {  // play a move, or generate a move and play
         if (!stats.is_episode_ongoing()) {  // should open an episode
-          black.open_episode("~:" + white.name());
-          white.open_episode(black.name() + ":~");
-          stats.open_episode(black.name() + ":" + white.name());
+          black->open_episode("~:" + white->name());
+          white->open_episode(black->name() + ":~");
+          stats.open_episode(black->name() + ":" + white->name());
         }
 
         episode& game = stats.back();
-        agent& who = game.take_turns(black, white);
-        if (who.role()[0] != std::tolower(args[1][0])) {  // player mismatch?!
+        agent* who = game.take_turns(black, white);
+        if (who->role()[0] != std::tolower(args[1][0])) {  // player mismatch?!
           std::cout << "= "
                     << "resign" << std::endl
                     << std::endl;
           // show the error message and terminate the shell
           std::cerr << "player color " << args[1] << " mismatch!" << std::endl;
-          std::cerr << "current state, " << who.role()
+          std::cerr << "current state, " << who->role()
                     << " to play: " << std::endl
                     << game.state();
           break;
         }
         if (args[0] == "play") {      // play a move
           std::string types = "?bw";  // black == 1, white == 2
-          action::place move(args[2], types.find(who.role()[0]));
+          action::place move(args[2], types.find(who->role()[0]));
           if (game.apply_action(move) !=
               true) {  // remote plays an illegal move?!
             std::cout << "= "
                       << "resign" << std::endl
                       << std::endl;
             // show the error message and terminate the shell
-            std::cerr << who.role() << " plays an illegal action!" << std::endl;
+            std::cerr << who->role() << " plays an illegal action!"
+                      << std::endl;
             const char* reason[] = {
                 "legal",
                 "illegal_turn",
@@ -157,7 +158,7 @@ int main(int argc, const char* argv[]) {
             break;
           }
         } else if (args[0] == "genmove") {  // generate a move and play
-          action::place move = who.take_action(game.state());
+          action::place move = who->take_action(game.state());
           if (game.apply_action(move) == true) {
             reply = move.position();
           } else {  // I have no legal move to play
@@ -168,10 +169,10 @@ int main(int argc, const char* argv[]) {
       } else if (args[0] == "clear_board" ||
                  args[0] == "quit") {      // reset game, or quit
         if (stats.is_episode_ongoing()) {  // should close an opened episode
-          agent& win = stats.back().last_turns(black, white);
-          stats.close_episode(win.name());
-          black.close_episode(win.name());
-          white.close_episode(win.name());
+          agent* win = stats.back().last_turns(black, white);
+          stats.close_episode(win->name());
+          black->close_episode(win->name());
+          white->close_episode(win->name());
         }
         if (args[0] == "quit") break;  // quit GTP shell
 
