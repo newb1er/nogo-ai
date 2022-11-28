@@ -1,5 +1,5 @@
 GXX=/usr/bin/g++
-GXXFLAGS= -O3 -std=c++11 -Wall -fmessage-length=0
+GXXFLAGS= -O3 -std=c++11 -Wall -fmessage-length=0 -fopenmp
 # GXXSANFLAG= -fsanitize=address
 
 .PHONY: mcts

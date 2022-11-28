@@ -1,19 +1,33 @@
+#include <atomic>
+#include <mutex>
+
 #include "../mcts.h"
 
 std::shared_ptr<Node> selector(std::shared_ptr<Node> node, bool minmax) {
+  std::mutex mutex;
   double revert_ = minmax ? -1.0 : 1.0;
   auto& kids = node->kids;
 
   double best_value = (revert_ * kids.front()->value / kids.front()->visits) +
                       sqrt(2 * log(node->visits) / kids.front()->visits);
   std::shared_ptr<Node> best_child = kids.front();
+  std::atomic<bool> found(false);
+
+#pragma omp parallel for
   for (auto& kid : kids) {
-    if (kid->visits == 0) return kid;
+    if (found.load()) continue;
+    if (kid->visits == 0) {
+      found.store(true);
+      std::lock_guard<std::mutex> lock(mutex);
+      best_child = kid;
+    }
 
     double v = (revert_ * kid->value / kid->visits) +
                sqrt(2 * log(node->visits) / kid->visits);
 
     if (v > best_value) {
+      std::lock_guard<std::mutex> lock(mutex);
+      if (found.load()) continue;
       best_value = v;
       best_child = kid;
     }

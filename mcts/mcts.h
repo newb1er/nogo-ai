@@ -78,4 +78,4 @@ class Node {
   std::shared_ptr<State> state;
 };
 
-int MCTS(State&, int, bool);
+int MCTS(State&, int, bool, int);

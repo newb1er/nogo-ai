@@ -116,6 +116,9 @@ class MCTSAgent : public agent {
     if (meta.find("T") != meta.end()) {
       simulation_count = (int(meta["T"]));
     }
+    if (meta.find("num_rollout") != meta.end()) {
+      num_rollout = (int(meta["num_rollout"]));
+    }
     if (role() == "black") who = board::black;
     if (role() == "white") who = board::white;
     if (who == board::empty)
@@ -124,12 +127,13 @@ class MCTSAgent : public agent {
 
   virtual action take_action(const board& state) {
     NoGoState no_go_state(state);
-    int act = MCTS(no_go_state, simulation_count, true);
+    int act = MCTS(no_go_state, simulation_count, true, num_rollout);
     if (act == -1) return action();
     return action::place(act, who);
   }
 
  private:
+  int num_rollout = 20;
   int simulation_count = 100;
   board::piece_type who;
 };
