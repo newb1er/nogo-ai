@@ -40,9 +40,9 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
   /* expand all possible node */
   std::mutex mutex;
 #pragma omp parallel for
-  for (auto& action : possible_actions) {
+  for (size_t action = 0; action < possible_actions.size(); ++action) {
     auto new_state = node->state->Clone();
-    new_state->ApplyAction(action);
+    new_state->ApplyAction(possible_actions[action]);
 
     auto new_node = std::make_shared<Node>(new_state);
     new_node->parent = std::weak_ptr<Node>(node);

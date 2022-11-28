@@ -1,4 +1,4 @@
-GXX=/usr/bin/g++
+GXX=/usr/bin/g++-8
 GXXFLAGS= -O3 -std=c++11 -Wall -fmessage-length=0 -fopenmp
 # GXXSANFLAG= -fsanitize=address
 
