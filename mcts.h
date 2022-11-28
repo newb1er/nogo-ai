@@ -2,6 +2,7 @@
 #include <cassert>
 #include <functional>
 #include <map>
+#include <memory>
 #include <vector>
 
 #include "action.h"
@@ -11,7 +12,9 @@ class State {
  public:
   State() {}
   virtual ~State() {}
-  virtual State* Clone() { return this; };
+  virtual std::shared_ptr<State> Clone() {
+    return std::shared_ptr<State>(this);
+  };
   virtual double Rollout() {}
   virtual std::vector<int> GetPossibleActions() { return std::vector<int>(); }
   virtual void ApplyAction(const int action) {}
@@ -41,7 +44,9 @@ class NoGoState : public State {
 
     return *this;
   }
-  State* Clone() { return new NoGoState(this->board_); }
+  std::shared_ptr<State> Clone() {
+    return std::make_shared<NoGoState>(this->board_);
+  }
 
   virtual ~NoGoState() {}
   virtual double Rollout() override;
@@ -55,10 +60,10 @@ class NoGoState : public State {
 class Node {
  public:
   Node();
-  Node(State*);
-  Node* Selection() const;
-  Node* Expansion();
-  void Update();
+  Node(std::shared_ptr<State>);
+  std::shared_ptr<Node> Selection() const;
+  std::shared_ptr<Node> Expansion(std::shared_ptr<Node>);
+  void Update(std::shared_ptr<Node>);
   int GetBestAction() const;
   bool IsLeaf() const;
 
@@ -66,9 +71,9 @@ class Node {
   uint32_t visits;
   double value;
 
-  Node* parent;
-  std::vector<Node*> kids;
-  State* state;
+  std::shared_ptr<Node> parent;
+  std::vector<std::shared_ptr<Node>> kids;
+  std::shared_ptr<State> state;
 };
 
 int MCTS(State&, int);

@@ -25,28 +25,34 @@ typedef struct _NoGoAction {
 NoGoAction no_go_action;
 
 int MCTS(State& state, int simulation_count = 100) {
-  auto node = new Node(&state);
+  auto new_state = state.Clone();
+  auto root = std::make_shared<Node>(new_state);
 
   while (simulation_count--) {
-    auto leaf = node;
+    auto leaf = root;
 
     while (leaf->IsLeaf() == false) leaf = leaf->Selection();
-    leaf = leaf->Expansion();
-    leaf->Update();
+    auto new_node = leaf->Expansion(leaf);
+    if (new_node != nullptr) leaf = new_node;
+    leaf->Update(leaf);
   }
 
-  return node->GetBestAction();
+  int action = root->GetBestAction();
+  // root.reset();
+
+  return action;
 }
 
-Node::Node(State* state) : value(0), parent(nullptr), state(state) {}
+Node::Node(std::shared_ptr<State> state)
+    : value(0), parent(nullptr), state(state) {}
 
-Node* Node::Selection() const {
+std::shared_ptr<Node> Node::Selection() const {
   // Select the best child.
 
   /* UCB1 */
   double best_value = (-1 * kids.front()->value / kids.front()->visits) +
                       sqrt(2 * log(visits) / kids.front()->visits);
-  Node* best_child = kids.front();
+  std::shared_ptr<Node> best_child = kids.front();
   for (auto& kid : kids) {
     if (kid->visits == 0) return kid;
 
@@ -68,31 +74,32 @@ Node* Node::Selection() const {
   return best_child;
 }
 
-Node* Node::Expansion() {
+std::shared_ptr<Node> Node::Expansion(std::shared_ptr<Node> current) {
   std::vector<int> actions = state->GetPossibleActions();
 
   // Expand all the possible node.
   for (int action : actions) {
-    Node* new_node = new Node(state->Clone());
-    new_node->parent = this;
+    std::shared_ptr<State> new_state = state->Clone();
+    std::shared_ptr<Node> new_node = std::make_shared<Node>(state->Clone());
+    new_node->parent = current;
     new_node->state->ApplyAction(action);
     kids.push_back(new_node);
   }
 
-  if (kids.empty()) return this;
+  if (kids.empty()) return std::shared_ptr<Node>(nullptr);
 
   // Select a random child.
   return kids.front();
 }
 
-void Node::Update() {
+void Node::Update(std::shared_ptr<Node> leaf) {
   value = state->Rollout();
   visits++;
 
   auto v = -value;
 
   // Backpropagtion
-  Node* node = this;
+  std::shared_ptr<Node> node = leaf;
   while (node->parent != nullptr) {
     node = node->parent;
     node->visits += 1;
