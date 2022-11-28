@@ -1,7 +1,7 @@
 #include "mcts.h"
 
 Node::Node() = default;
-Node::Node(std::shared_ptr<State> state) : value(0), state(state) {}
+Node::Node(std::shared_ptr<State> state) : visits(0), value(0), state(state) {}
 
 int Node::GetBestAction() const {
   uint32_t best_visits = 0;
