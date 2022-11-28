@@ -63,11 +63,14 @@ double rollout(std::shared_ptr<Node> node) {
 
 void backpropagation(std::shared_ptr<Node> node, double value,
                      bool minmax = false) {
-  while (node->parent != nullptr) {
-    node->value += value;
-    node->visits += 1;
+  node->value = value;
+  node->visits += 1;
 
+  while (node->parent != nullptr) {
     node = node->parent;
     if (minmax) value = -value;
+
+    node->value += value;
+    node->visits += 1;
   }
 }
