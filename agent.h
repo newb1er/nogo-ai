@@ -19,7 +19,7 @@
 
 #include "action.h"
 #include "board.h"
-#include "mcts.h"
+#include "mcts/mcts.h"
 
 class agent {
  public:
@@ -124,7 +124,7 @@ class MCTSAgent : public agent {
 
   virtual action take_action(const board& state) {
     NoGoState no_go_state(state);
-    int act = MCTS(no_go_state, simulation_count);
+    int act = MCTS(no_go_state, simulation_count, true);
     if (act == -1) return action();
     return action::place(act, who);
   }
