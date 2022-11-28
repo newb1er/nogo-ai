@@ -73,7 +73,7 @@ class Node {
   uint32_t visits;
   double value;
 
-  std::shared_ptr<Node> parent;
+  std::weak_ptr<Node> parent;
   std::vector<std::shared_ptr<Node>> kids;
   std::shared_ptr<State> state;
 };

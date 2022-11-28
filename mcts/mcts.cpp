@@ -38,7 +38,7 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
     new_state->ApplyAction(action);
 
     auto new_node = std::make_shared<Node>(new_state);
-    new_node->parent = node;
+    new_node->parent = std::weak_ptr<Node>(node);
     node->kids.push_back(new_node);
   }
 
@@ -66,8 +66,8 @@ void backpropagation(std::shared_ptr<Node> node, double value,
   node->value = value;
   node->visits += 1;
 
-  while (node->parent != nullptr) {
-    node = node->parent;
+  while (node->parent.lock() != nullptr) {
+    node = node->parent.lock();
     if (minmax) value = -value;
 
     node->value += value;
