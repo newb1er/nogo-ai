@@ -223,5 +223,8 @@ int main(int argc, const char* argv[]) {
     out.close();
   }
 
+  delete black;
+  delete white;
+
   return 0;
 }
