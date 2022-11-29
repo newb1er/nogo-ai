@@ -2,8 +2,6 @@
 
 #include <omp.h>
 
-#include <mutex>
-
 // using ActionNodeList = std::vector<std::vector<std::shared_ptr<Node>>>;
 // using NodeList = std::vector<std::shared_ptr<Node>>;
 
@@ -43,6 +41,7 @@ std::shared_ptr<Node> selection(std::shared_ptr<Node> node, bool minmax) {
 std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
   auto possible_actions = node->state->GetPossibleActions();
   std::random_shuffle(possible_actions.begin(), possible_actions.end());
+  node->kids.reserve(possible_actions.size());
 
   /* expand all possible node */
   for (size_t action = 0; action < possible_actions.size(); ++action) {
