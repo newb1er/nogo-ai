@@ -63,10 +63,9 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
 double rollout(std::shared_ptr<Node> node, int num_rollout = 20) {
   double reward = 0.0;
 
-#pragma omp parallel for
+#pragma omp parallel for reduction(+ : reward)
   for (int i = 0; i < num_rollout; ++i) {
     auto s = node->state->Clone();
-
     while (s->IsTerminated() == false) {
       auto possible_actions = s->GetPossibleActions();
       if (possible_actions.size() == 0) break;
