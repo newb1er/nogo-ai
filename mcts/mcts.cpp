@@ -4,6 +4,12 @@
 
 #include <mutex>
 
+// using ActionNodeList = std::vector<std::vector<std::shared_ptr<Node>>>;
+// using NodeList = std::vector<std::shared_ptr<Node>>;
+
+// std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool,
+// ActionNodeList&); std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool,
+// ActionNodeList&);
 std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> expansion(std::shared_ptr<Node>);
@@ -15,6 +21,8 @@ int MCTS(State& state, int simulation_count = 100, bool minmax = false,
   auto new_state = state.Clone();
   auto root = std::make_shared<Node>(new_state);
 
+  // ActionNodeList action_nodes(board::size_x * board::size_y);
+
   while (simulation_count--) {
     auto leaf = expansion(selection(root, minmax));
 
@@ -24,8 +32,7 @@ int MCTS(State& state, int simulation_count = 100, bool minmax = false,
   return root->GetBestAction();
 }
 
-std::shared_ptr<Node> selection(std::shared_ptr<Node> node,
-                                bool minmax = false) {
+std::shared_ptr<Node> selection(std::shared_ptr<Node> node, bool minmax) {
   while (node->IsLeaf() == false) {
     node = selector(node, minmax);
   }
@@ -46,6 +53,7 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
 
     auto new_node = std::make_shared<Node>(new_state);
     new_node->parent = std::weak_ptr<Node>(node);
+    // list.at(action).push_back(new_node);
 
     {
       std::lock_guard<std::mutex> lock(mutex);
