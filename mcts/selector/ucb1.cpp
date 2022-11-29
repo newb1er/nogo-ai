@@ -4,8 +4,9 @@ std::shared_ptr<Node> selector(std::shared_ptr<Node> node, bool minmax) {
   double revert_ = minmax ? -1.0 : 1.0;
   auto& kids = node->kids;
 
+  double l_explore = sqrt(2 * log(node->visits));
   double best_value = (revert_ * kids.front()->value / kids.front()->visits) +
-                      sqrt(2 * log(node->visits) / kids.front()->visits);
+                      (l_explore / sqrt(kids.front()->visits));
   size_t best_child = 0;
 
   for (size_t kid = 0; kid < kids.size(); ++kid) {
@@ -14,7 +15,7 @@ std::shared_ptr<Node> selector(std::shared_ptr<Node> node, bool minmax) {
     }
 
     double v = (revert_ * kids.at(kid)->value / kids.at(kid)->visits) +
-               sqrt(2 * log(node->visits) / kids.at(kid)->visits);
+               (l_explore / sqrt(kids.at(kid)->visits));
 
     if (v > best_value) {
       best_value = v;
