@@ -12,7 +12,7 @@ std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> expansion(std::shared_ptr<Node>);
 double rollout(std::shared_ptr<Node>, int);
-void backpropagation(std::shared_ptr<Node>, double, bool);
+void backpropagation(std::shared_ptr<Node>, double, int, bool);
 
 int MCTS(State& state, int simulation_count = 100, bool minmax = false,
          int num_rollout = 20) {
@@ -24,7 +24,7 @@ int MCTS(State& state, int simulation_count = 100, bool minmax = false,
   while (simulation_count--) {
     auto leaf = expansion(selection(root, minmax));
 
-    backpropagation(leaf, rollout(leaf, num_rollout), minmax);
+    backpropagation(leaf, rollout(leaf, num_rollout), num_rollout, minmax);
   }
 
   return root->GetBestAction();
@@ -77,19 +77,19 @@ double rollout(std::shared_ptr<Node> node, int num_rollout = 20) {
     reward += s->GetReward();
   }
 
-  return reward / num_rollout;
+  return reward;
 }
 
-void backpropagation(std::shared_ptr<Node> node, double value,
+void backpropagation(std::shared_ptr<Node> node, double value, int num_rollout,
                      bool minmax = false) {
   node->value = value;
-  node->visits += 1;
+  node->visits += num_rollout;
 
   while (node->parent.lock() != nullptr) {
     node = node->parent.lock();
     if (minmax) value = -value;
 
     node->value += value;
-    node->visits += 1;
+    node->visits += num_rollout;
   }
 }
