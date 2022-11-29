@@ -45,8 +45,6 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
   std::random_shuffle(possible_actions.begin(), possible_actions.end());
 
   /* expand all possible node */
-  std::mutex mutex;
-#pragma omp parallel for
   for (size_t action = 0; action < possible_actions.size(); ++action) {
     auto new_state = node->state->Clone();
     new_state->ApplyAction(possible_actions[action]);
@@ -55,10 +53,7 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
     new_node->parent = std::weak_ptr<Node>(node);
     // list.at(action).push_back(new_node);
 
-    {
-      std::lock_guard<std::mutex> lock(mutex);
-      node->kids.push_back(new_node);
-    }
+    node->kids.push_back(new_node);
   }
 
   if (node->kids.empty()) return node;
