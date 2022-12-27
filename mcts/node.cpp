@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "mcts.h"
 
 Node::Node() = default;
@@ -18,3 +20,15 @@ int Node::GetBestAction() const {
 }
 
 bool Node::IsLeaf() const { return kids.empty(); }
+
+MCTSNodePtr Node::FindChild(State& state) {
+  MCTSNodePtr selected_node;
+  for (auto node : kids) {
+    if (*(node->state) == state) {
+      selected_node = node;
+      break;
+    }
+  }
+
+  return selected_node;
+}

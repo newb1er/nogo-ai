@@ -36,6 +36,7 @@ class agent {
   virtual void close_episode(const std::string& flag = "") {}
   virtual action take_action(const board& b) { return action(); }
   virtual bool check_for_win(const board& b) { return false; }
+  virtual void notify_action(const action& a) {}
 
  public:
   virtual std::string property(const std::string& key) const {
@@ -116,26 +117,40 @@ class MCTSAgent : public agent {
     if (meta.find("T") != meta.end()) {
       simulation_count = (int(meta["T"]));
     }
-    if (meta.find("num_rollout") != meta.end()) {
-      num_rollout = (int(meta["num_rollout"]));
-    }
     if (role() == "black") who = board::black;
     if (role() == "white") who = board::white;
     if (who == board::empty)
       throw std::invalid_argument("invalid role: " + role());
   }
 
+  virtual void open_episode(const std::string& flag = "") { root_init = false; }
+
   virtual action take_action(const board& state) {
     NoGoState no_go_state(state);
-    int act = MCTS(no_go_state, simulation_count, true, num_rollout);
+    if (root_init == false) {
+      CreateRootNode(no_go_state);
+      root_init = true;
+    } else {
+      root = root->FindChild(no_go_state);
+    }
+
+    int act = MCTS(root, simulation_count, true);
     if (act == -1) return action();
     return action::place(act, who);
   }
 
+  virtual void close_episode(const std::string& flag = "") {
+    root_init = false;
+  }
+
+  virtual void notify_action(const action& a) {}
+
  private:
-  int num_rollout = 20;
   int simulation_count = 100;
   board::piece_type who;
+
+  MCTSNodePtr root;
+  bool root_init = false;
 };
 
 agent* make_agent(const std::string& args = "") {

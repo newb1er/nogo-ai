@@ -11,20 +11,23 @@
 std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> expansion(std::shared_ptr<Node>);
-double rollout(std::shared_ptr<Node>, int);
-void backpropagation(std::shared_ptr<Node>, double, int, bool);
+double rollout(std::shared_ptr<Node>);
+void backpropagation(std::shared_ptr<Node>, double, bool);
 
-int MCTS(State& state, int simulation_count = 100, bool minmax = false,
-         int num_rollout = 20) {
+MCTSNodePtr CreateRootNode(State& state) {
   auto new_state = state.Clone();
   auto root = std::make_shared<Node>(new_state);
 
+  return root;
+}
+
+int MCTS(MCTSNodePtr& root, int simulation_count = 100, bool minmax = false) {
   // ActionNodeList action_nodes(board::size_x * board::size_y);
 
   while (simulation_count--) {
     auto leaf = expansion(selection(root, minmax));
 
-    backpropagation(leaf, rollout(leaf, num_rollout), num_rollout, minmax);
+    backpropagation(leaf, rollout(leaf), minmax);
   }
 
   return root->GetBestAction();
@@ -60,36 +63,33 @@ std::shared_ptr<Node> expansion(std::shared_ptr<Node> node) {
   return node->kids.front();
 }
 
-double rollout(std::shared_ptr<Node> node, int num_rollout = 20) {
+double rollout(std::shared_ptr<Node> node) {
   double reward = 0.0;
 
-#pragma omp parallel for reduction(+ : reward)
-  for (int i = 0; i < num_rollout; ++i) {
-    auto s = node->state->Clone();
-    while (s->IsTerminated() == false) {
-      auto possible_actions = s->GetPossibleActions();
-      if (possible_actions.size() == 0) break;
-      std::random_shuffle(possible_actions.begin(), possible_actions.end());
+  auto s = node->state->Clone();
+  while (s->IsTerminated() == false) {
+    auto possible_actions = s->GetPossibleActions();
+    if (possible_actions.size() == 0) break;
+    std::random_shuffle(possible_actions.begin(), possible_actions.end());
 
-      s->ApplyAction(possible_actions.front());
-    }
-
-    reward += s->GetReward();
+    s->ApplyAction(possible_actions.front());
   }
+
+  reward += s->GetReward();
 
   return reward;
 }
 
-void backpropagation(std::shared_ptr<Node> node, double value, int num_rollout,
+void backpropagation(std::shared_ptr<Node> node, double value,
                      bool minmax = false) {
   node->value = value;
-  node->visits += num_rollout;
+  node->visits += 1;
 
   while (node->parent.lock() != nullptr) {
     node = node->parent.lock();
     if (minmax) value = -value;
 
     node->value += value;
-    node->visits += num_rollout;
+    node->visits += 1;
   }
 }

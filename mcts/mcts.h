@@ -8,6 +8,10 @@
 #include "../action.h"
 #include "../board.h"
 
+class Node;
+
+using MCTSNodePtr = std::shared_ptr<Node>;
+
 class State {
  public:
   State() : action_(-1), reward_(0), terminated_(false) {}
@@ -23,6 +27,10 @@ class State {
   int GetAction() const { return action_; }
   double GetReward() const { return reward_; }
   bool IsTerminated() const { return terminated_; }
+
+  virtual bool operator==(const State& s) const {
+    return action_ == s.GetAction();
+  }
 
  protected:
   int action_;
@@ -51,6 +59,11 @@ class NoGoState : public State {
 
     return *this;
   }
+
+  virtual bool operator==(const NoGoState& s) const {
+    return board_ == (s).board_;
+  }
+
   std::shared_ptr<State> Clone() {
     return std::make_shared<NoGoState>(this->board_);
   }
@@ -69,6 +82,7 @@ class Node {
   Node(std::shared_ptr<State>);
   int GetBestAction() const;
   bool IsLeaf() const;
+  std::shared_ptr<Node> FindChild(State&);
 
   uint32_t visits;
   double value;
@@ -78,4 +92,6 @@ class Node {
   std::shared_ptr<State> state;
 };
 
-int MCTS(State&, int, bool, int);
+MCTSNodePtr CreateRootNode(State&);
+
+int MCTS(MCTSNodePtr&, int, bool);
