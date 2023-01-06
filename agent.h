@@ -123,34 +123,26 @@ class MCTSAgent : public agent {
       throw std::invalid_argument("invalid role: " + role());
   }
 
-  virtual void open_episode(const std::string& flag = "") { root_init = false; }
+  virtual void open_episode(const std::string& flag = "") { mcts_tree.reset(); }
 
   virtual action take_action(const board& state) {
     NoGoState no_go_state(state);
-    if (root_init == false) {
-      CreateRootNode(no_go_state);
-      root_init = true;
-    } else {
-      root = root->FindChild(no_go_state);
-    }
 
-    int act = MCTS(root, simulation_count, true);
+    int act = mcts_tree.simulate(no_go_state, simulation_count, true);
     if (act == -1) return action();
     return action::place(act, who);
   }
 
-  virtual void close_episode(const std::string& flag = "") {
-    root_init = false;
+  virtual void notify_action(const action& a) {
+    const int act = a.index();
+    mcts_tree.step(act);
   }
-
-  virtual void notify_action(const action& a) {}
 
  private:
   int simulation_count = 100;
   board::piece_type who;
 
-  MCTSNodePtr root;
-  bool root_init = false;
+  MCTSTree mcts_tree;
 };
 
 agent* make_agent(const std::string& args = "") {

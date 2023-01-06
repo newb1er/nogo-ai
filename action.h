@@ -45,6 +45,12 @@ class action {
     }
     return in.ignore(2);
   }
+  virtual unsigned index() const {
+    auto proto = entries().find(type());
+    if (proto != entries().end())
+      return proto->second->reinterpret(this).index();
+    return -1u;
+  }
 
  public:
   operator unsigned() const { return code; }
@@ -110,6 +116,8 @@ class action::place : public action {
     }
     return in;
   }
+
+  unsigned index() const { return position().i; }
 
  protected:
   action& reinterpret(const action* a) const {

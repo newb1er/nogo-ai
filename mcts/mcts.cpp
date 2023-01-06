@@ -1,28 +1,37 @@
 #include "mcts.h"
 
-#include <omp.h>
+#include <cassert>
 
-// using ActionNodeList = std::vector<std::vector<std::shared_ptr<Node>>>;
-// using NodeList = std::vector<std::shared_ptr<Node>>;
-
-// std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool,
-// ActionNodeList&); std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool,
-// ActionNodeList&);
 std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool);
 std::shared_ptr<Node> expansion(std::shared_ptr<Node>);
 double rollout(std::shared_ptr<Node>);
 void backpropagation(std::shared_ptr<Node>, double, bool);
 
-MCTSNodePtr CreateRootNode(State& state) {
+void MCTSTree::init(State& state) {
   auto new_state = state.Clone();
-  auto root = std::make_shared<Node>(new_state);
-
-  return root;
+  root = std::make_shared<Node>(new_state);
+  init_ = true;
 }
 
-int MCTS(MCTSNodePtr& root, int simulation_count = 100, bool minmax = false) {
-  // ActionNodeList action_nodes(board::size_x * board::size_y);
+void MCTSTree::step(const int& action) {
+  if (init_ == false) return;
+
+  for (auto& kid : root->kids) {
+    if (kid->state->GetAction() == action) {
+      root = kid;
+      break;
+    }
+  }
+}
+
+int MCTSTree::simulate(State& state, int simulation_count = 100,
+                       bool minmax = false) {
+  // init(state);
+
+  if (init_ == false) {
+    init(state);
+  }
 
   while (simulation_count--) {
     auto leaf = expansion(selection(root, minmax));
@@ -30,7 +39,11 @@ int MCTS(MCTSNodePtr& root, int simulation_count = 100, bool minmax = false) {
     backpropagation(leaf, rollout(leaf), minmax);
   }
 
-  return root->GetBestAction();
+  auto best_action = root->GetBestAction();
+
+  step(best_action);
+
+  return best_action;
 }
 
 std::shared_ptr<Node> selection(std::shared_ptr<Node> node, bool minmax) {

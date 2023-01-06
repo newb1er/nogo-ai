@@ -77,8 +77,8 @@ int main(int argc, const char* argv[]) {
 
   if (!shell) {  // launch standard local games
     while (!stats.is_finished()) {
-      //			std::cerr << "======== Game " << stats.step() <<
-      //" ========" << std::endl;
+      // std::cerr << "======== Game " << stats.step() << " ========" <<
+      // std::endl;
       black->open_episode("~:" + white->name());
       white->open_episode(black->name() + ":~");
 
@@ -87,10 +87,11 @@ int main(int argc, const char* argv[]) {
       while (true) {
         agent* who = game.take_turns(black, white);
         action move = who->take_action(game.state());
-        //				std::cerr << game.state() << "#" <<
-        // game.step() << " " << who.name() << ": " << move << std::endl;
         if (game.apply_action(move) != true) break;
         if (who->check_for_win(game.state())) break;
+        // std::cerr << game.state() << "#" << game.step() << " " << who->name()
+        //           << ": " << move << std::endl;
+        who = game.take_turns(black, white);
         who->notify_action(move);
       }
       agent* win = game.last_turns(black, white);
@@ -158,6 +159,7 @@ int main(int argc, const char* argv[]) {
             std::cerr << "reason: " << reason[std::min(-code, 7)] << std::endl;
             break;
           }
+          who = game.take_turns(black, white);
           who->notify_action(move);
         } else if (args[0] == "genmove") {  // generate a move and play
           action::place move = who->take_action(game.state());
