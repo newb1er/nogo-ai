@@ -3,7 +3,8 @@
 #include "mcts.h"
 
 Node::Node() = default;
-Node::Node(std::shared_ptr<State> state) : visits(0), value(0), state(state) {}
+Node::Node(std::shared_ptr<State> state, size_t depth)
+    : visits(0), value(0), depth(depth), state(state) {}
 
 int Node::GetBestAction() const {
   uint32_t best_visits = 0;
@@ -15,6 +16,9 @@ int Node::GetBestAction() const {
       best_action = kid->state->GetAction();
     }
   }
+
+  printf("best visits: %d\n", best_visits);
+  printf("best action: %d\n", best_action);
 
   return best_action;
 }

@@ -89,13 +89,14 @@ class Node {
 
  public:
   Node();
-  Node(std::shared_ptr<State>);
+  Node(std::shared_ptr<State>, size_t);
   int GetBestAction() const;
   bool IsLeaf() const;
   std::shared_ptr<Node> FindChild(State&);
 
   uint32_t visits;
   double value;
+  size_t depth;
 
   std::weak_ptr<Node> parent;
   std::vector<std::shared_ptr<Node>> kids;
@@ -104,18 +105,33 @@ class Node {
 
 class MCTSTree {
  public:
-  MCTSTree() : init_(false) {}
-  int simulate(State&, int, bool);
+  using NodeTable = std::unordered_map<int, std::list<MCTSNodePtr>>;
+
+ public:
+  MCTSTree() : init_(false), rave_(false) {}
+  MCTSTree(bool using_rave, double rave_bias)
+      : init_(false), rave_(using_rave), rave_bias_(rave_bias) {}
   void reset() { init_ = false; }
   void init(State&);
   void step(const int&);
+  void setRave(bool using_rave) { rave_ = using_rave; }
+  MCTSNodePtr getRoot() { return root; }
+
+ public:
+  void simulate(State&, int, bool);
+  Node::NodePtr selection(Node::NodePtr, bool);
+  Node::NodePtr expansion(std::weak_ptr<Node>);
+  double rollout(Node::NodePtr);
+  void backpropagation(Node::NodePtr, double, bool);
 
  protected:
-  size_t num_root = 8;
+  NodeTable node_table;
 
  private:
   bool init_;
+  bool rave_;
+  double rave_bias_;
   MCTSNodePtr root;
-  std::vector<MCTSNodePtr> root_list;
-  std::shared_ptr<Node::NodePtr> garbage;
 };
+
+int mcts(State&, int, int, bool, bool, double);

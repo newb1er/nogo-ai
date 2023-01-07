@@ -117,32 +117,29 @@ class MCTSAgent : public agent {
     if (meta.find("T") != meta.end()) {
       simulation_count = (int(meta["T"]));
     }
+    if (meta.find("rave") != meta.end()) {
+      rave = double(meta["rave"]);
+    }
     if (role() == "black") who = board::black;
     if (role() == "white") who = board::white;
     if (who == board::empty)
       throw std::invalid_argument("invalid role: " + role());
   }
 
-  virtual void open_episode(const std::string& flag = "") { mcts_tree.reset(); }
-
   virtual action take_action(const board& state) {
     NoGoState no_go_state(state);
 
-    int act = mcts_tree.simulate(no_go_state, simulation_count, true);
+    int act = mcts(no_go_state, 8, simulation_count, true, rave != -1.0, rave);
     if (act == -1) return action();
     return action::place(act, who);
   }
 
-  virtual void notify_action(const action& a) {
-    const int act = a.index();
-    mcts_tree.step(act);
-  }
+  virtual void notify_action(const action& a) {}
 
  private:
   int simulation_count = 100;
+  double rave = -1.0;
   board::piece_type who;
-
-  MCTSTree mcts_tree;
 };
 
 agent* make_agent(const std::string& args = "") {

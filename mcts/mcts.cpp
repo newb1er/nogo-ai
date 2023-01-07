@@ -2,21 +2,22 @@
 
 #include <atomic>
 #include <cassert>
+#include <random>
 
-std::shared_ptr<Node> selection(std::shared_ptr<Node>, bool);
-std::shared_ptr<Node> selector(std::shared_ptr<Node>, bool);
-std::shared_ptr<Node> expansion(std::weak_ptr<Node>);
-double rollout(std::shared_ptr<Node>);
-void backpropagation(std::shared_ptr<Node>, double, bool);
+std::random_device rd;
+std::mt19937 gen(rd());
+
+Node::NodePtr selector(Node::NodePtr, bool);
+Node::NodePtr selector(Node::NodePtr, double, bool, MCTSTree::NodeTable&);
+
+// std::shared_ptr<Node> selection(Node::NodePtr, bool);
+// std::shared_ptr<Node> expansion(std::weak_ptr<Node>);
+// double rollout(std::shared_ptr<Node>);
+// void backpropagation(std::shared_ptr<Node>, double, bool);
 
 void MCTSTree::init(State& state) {
   auto new_state = state.Clone();
-  root_list.resize(num_root);
-
-  for (auto& node : root_list) {
-    node = std::make_shared<Node>(new_state);
-  }
-
+  root = std::make_shared<Node>(new_state, 0);
   init_ = true;
 }
 
@@ -32,56 +33,43 @@ void MCTSTree::step(const int& action) {
   }
 }
 
-int MCTSTree::simulate(State& state, int simulation_count = 100,
-                       bool minmax = false) {
+void MCTSTree::simulate(State& state, int simulation_count = 100,
+                        bool minmax = false) {
   init(state);
 
-#pragma omp parallel for
-  for (size_t i = 0; i < num_root; ++i) {
-    for (int count = 0; count < simulation_count; ++count) {
-      auto leaf = selection(root_list.at(i), minmax);
-      leaf = expansion(leaf);
+  for (int count = 0; count < simulation_count; ++count) {
+    auto leaf = selection(root, minmax);
+    leaf = expansion(leaf);
 
-      auto reward = rollout(leaf);
-      backpropagation(leaf, reward, minmax);
-    }
+    auto reward = rollout(leaf);
+    backpropagation(leaf, reward, minmax);
   }
-
-  auto root = root_list.front();
-
-  // merge root
-  for (auto& node : root_list) {
-    assert(node->kids.size() == root->kids.size());
-    for (size_t i = 0; i < node->kids.size(); ++i) {
-      root->kids[i]->visits += node->kids[i]->visits;
-      root->kids[i]->value += node->kids[i]->value;
-    }
-  }
-
-  auto best_action = root->GetBestAction();
-
-  return best_action;
 }
 
-std::shared_ptr<Node> selection(std::shared_ptr<Node> node, bool minmax) {
+Node::NodePtr MCTSTree::selection(Node::NodePtr node, bool minmax) {
   while (node->IsLeaf() == false) {
-    node = selector(node, minmax);
+    if (rave_) {
+      node = selector(node, rave_bias_, minmax, node_table);
+    } else {
+      node = selector(node, minmax);
+    }
   }
 
   return node;
 }
 
-std::shared_ptr<Node> expansion(std::weak_ptr<Node> n) {
+Node::NodePtr MCTSTree::expansion(std::weak_ptr<Node> n) {
   auto node = n.lock();
   auto possible_actions = node->state->GetPossibleActions();
   // std::random_shuffle(possible_actions.begin(), possible_actions.end());
 
   /* expand all possible node */
-  for (size_t action = 0; action < possible_actions.size(); ++action) {
+  for (auto& action : possible_actions) {
     auto new_state = node->state->Clone();
-    new_state->ApplyAction(possible_actions[action]);
+    new_state->ApplyAction(action);
 
-    auto new_node = std::make_shared<Node>(new_state);
+    auto new_node = std::make_shared<Node>(new_state, node->depth + 1);
+    node_table[action].push_back(new_node);
     new_node->parent = std::weak_ptr<Node>(node);
     node->kids.push_back(new_node);
   }
@@ -91,7 +79,7 @@ std::shared_ptr<Node> expansion(std::weak_ptr<Node> n) {
   return node->kids.front();
 }
 
-double rollout(std::shared_ptr<Node> node) {
+double MCTSTree::rollout(Node::NodePtr node) {
   double reward = 0.0;
 
   auto s = node->state->Clone();
@@ -108,8 +96,8 @@ double rollout(std::shared_ptr<Node> node) {
   return reward;
 }
 
-void backpropagation(std::shared_ptr<Node> node, double value,
-                     bool minmax = false) {
+void MCTSTree::backpropagation(Node::NodePtr node, double value,
+                               bool minmax = false) {
   node->visits += 1;
   node->value = value;
 
@@ -119,4 +107,37 @@ void backpropagation(std::shared_ptr<Node> node, double value,
     node->visits += 1;
     node->value = value;
   }
+}
+
+int mcts(State& state, int num_tree = 1, int simulation_count = 100,
+         bool minmax = false, bool rave = false, double rave_bias = 10.0) {
+  std::vector<MCTSTree> tree_list;
+
+  for (int i = 0; i < num_tree; ++i) {
+    tree_list.emplace_back(rave, rave_bias);
+  }
+
+#pragma omp parallel
+  {
+#pragma omp for
+    for (int i = 0; i < num_tree; ++i) {
+      tree_list[i].simulate(state, simulation_count, minmax);
+    }
+  }
+
+  auto headTree = tree_list.front();
+  auto headTreeRoot = headTree.getRoot();
+
+  // merge tree
+  for (auto& tree : tree_list) {
+    auto root = tree.getRoot();
+    for (size_t i = 0; i < root->kids.size(); ++i) {
+      headTreeRoot->kids[i]->visits += root->kids[i]->visits;
+      headTreeRoot->kids[i]->value += root->kids[i]->value;
+    }
+  }
+
+  auto best_action = headTreeRoot->GetBestAction();
+
+  return best_action;
 }
