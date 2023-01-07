@@ -1,4 +1,7 @@
 #pragma once
+#include <omp.h>
+
+#include <atomic>
 #include <cassert>
 #include <functional>
 #include <map>
@@ -30,6 +33,10 @@ class State {
 
   virtual bool operator==(const State& s) const {
     return action_ == s.GetAction();
+  }
+
+  virtual bool operator!=(const State& s) const {
+    return action_ != s.GetAction();
   }
 
  protected:
@@ -78,6 +85,9 @@ class NoGoState : public State {
 
 class Node {
  public:
+  using NodePtr = std::shared_ptr<Node>;
+
+ public:
   Node();
   Node(std::shared_ptr<State>);
   int GetBestAction() const;
@@ -92,6 +102,20 @@ class Node {
   std::shared_ptr<State> state;
 };
 
-MCTSNodePtr CreateRootNode(State&);
+class MCTSTree {
+ public:
+  MCTSTree() : init_(false) {}
+  int simulate(State&, int, bool);
+  void reset() { init_ = false; }
+  void init(State&);
+  void step(const int&);
 
-int MCTS(MCTSNodePtr&, int, bool);
+ protected:
+  size_t num_root = 8;
+
+ private:
+  bool init_;
+  MCTSNodePtr root;
+  std::vector<MCTSNodePtr> root_list;
+  std::shared_ptr<Node::NodePtr> garbage;
+};
