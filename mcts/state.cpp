@@ -11,16 +11,21 @@ std::vector<int> NoGoState::GetPossibleActions() {
     if (move.apply(after) == board::legal) actions.push_back(i);
   }
 
+  if (actions.empty()) {
+    reward_ = -1.0;
+    terminated_ = true;
+  }
+
   return actions;
 }
 
 void NoGoState::ApplyAction(const int action) {
-  auto move = action::place(action, board_.info().who_take_turns);
+  auto who = board_.info().who_take_turns;
+  auto move = action::place(action, who);
   if (move.apply(board_) != board::legal) {
     std::cerr << "Illegal action: " << action << std::endl;
     assert(false);
   }
 
   action_ = action;
-  reward_ = -reward_;
 }
