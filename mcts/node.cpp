@@ -17,9 +17,6 @@ int Node::GetBestAction() const {
     }
   }
 
-  printf("best visits: %d\n", best_visits);
-  printf("best action: %d\n", best_action);
-
   return best_action;
 }
 

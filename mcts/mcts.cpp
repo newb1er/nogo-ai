@@ -8,7 +8,8 @@ std::random_device rd;
 std::mt19937 gen(rd());
 
 Node::NodePtr selector(Node::NodePtr, bool);
-Node::NodePtr selector(Node::NodePtr, double, bool, MCTSTree::NodeTable&);
+Node::NodePtr selector(Node::NodePtr, double, unsigned, bool,
+                       MCTSTree::NodeTable&);
 
 // std::shared_ptr<Node> selection(Node::NodePtr, bool);
 // std::shared_ptr<Node> expansion(std::weak_ptr<Node>);
@@ -38,10 +39,11 @@ void MCTSTree::simulate(State& state, int simulation_count = 100,
   init(state);
 
   for (int count = 0; count < simulation_count; ++count) {
+    if (std::chrono::steady_clock::now() > deadline) break;
     auto leaf = selection(root, minmax);
     leaf = expansion(leaf);
 
-    auto reward = rollout(leaf);
+    auto reward = rollout(leaf, minmax);
     backpropagation(leaf, reward, minmax);
   }
 }
@@ -49,7 +51,7 @@ void MCTSTree::simulate(State& state, int simulation_count = 100,
 Node::NodePtr MCTSTree::selection(Node::NodePtr node, bool minmax) {
   while (node->IsLeaf() == false) {
     if (rave_) {
-      node = selector(node, rave_bias_, minmax, node_table);
+      node = selector(node, rave_bias_, rave_depth, minmax, node_table);
     } else {
       node = selector(node, minmax);
     }
@@ -79,8 +81,8 @@ Node::NodePtr MCTSTree::expansion(std::weak_ptr<Node> n) {
   return node->kids.front();
 }
 
-double MCTSTree::rollout(Node::NodePtr node) {
-  double reward = 0.0;
+double MCTSTree::rollout(Node::NodePtr node, bool minmax = false) {
+  size_t depth = 0;
 
   auto s = node->state->Clone();
   while (s->IsTerminated() == false) {
@@ -89,11 +91,12 @@ double MCTSTree::rollout(Node::NodePtr node) {
     std::random_shuffle(possible_actions.begin(), possible_actions.end());
 
     s->ApplyAction(possible_actions.front());
+    depth++;
   }
 
-  reward += s->GetReward();
+  auto reward = s->GetReward();
 
-  return reward;
+  return minmax ? (-1.0 * static_cast<double>(depth & 0x1)) * reward : reward;
 }
 
 void MCTSTree::backpropagation(Node::NodePtr node, double value,
@@ -105,16 +108,19 @@ void MCTSTree::backpropagation(Node::NodePtr node, double value,
     if (minmax) value = -value;
 
     node->visits += 1;
-    node->value = value;
+    node->value += value;
   }
 }
 
-int mcts(State& state, int num_tree = 1, int simulation_count = 100,
-         bool minmax = false, bool rave = false, double rave_bias = 10.0) {
+int mcts(std::chrono::milliseconds time, int play, int maxplay, State& state,
+         int num_tree = 1, int simulation_count = 100, bool minmax = false,
+         bool rave = false, double rave_bias = 10.0) {
   std::vector<MCTSTree> tree_list;
+  auto length = time / (15 + std::max(0, (int)maxplay - play));
+  auto deadline = std::chrono::steady_clock::now() + length;
 
   for (int i = 0; i < num_tree; ++i) {
-    tree_list.emplace_back(rave, rave_bias);
+    tree_list.emplace_back(rave, rave_bias, 80, deadline);
   }
 
 #pragma omp parallel
@@ -129,8 +135,8 @@ int mcts(State& state, int num_tree = 1, int simulation_count = 100,
   auto headTreeRoot = headTree.getRoot();
 
   // merge tree
-  for (auto& tree : tree_list) {
-    auto root = tree.getRoot();
+  for (size_t n = 1; n < tree_list.size(); ++n) {
+    auto root = tree_list.at(n).getRoot();
     for (size_t i = 0; i < root->kids.size(); ++i) {
       headTreeRoot->kids[i]->visits += root->kids[i]->visits;
       headTreeRoot->kids[i]->value += root->kids[i]->value;

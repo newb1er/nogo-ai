@@ -10,6 +10,7 @@
 #pragma once
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <fstream>
 #include <map>
 #include <random>
@@ -119,6 +120,11 @@ class MCTSAgent : public agent {
     }
     if (meta.find("rave") != meta.end()) {
       rave = double(meta["rave"]);
+      std::cout << "rave: " << rave << std::endl;
+    }
+    if (meta.find("time") != meta.end()) {
+      time_limits = std::chrono::milliseconds(int(meta["time"]));
+      count = 0;
     }
     if (role() == "black") who = board::black;
     if (role() == "white") who = board::white;
@@ -126,10 +132,25 @@ class MCTSAgent : public agent {
       throw std::invalid_argument("invalid role: " + role());
   }
 
+  virtual void open_episode(const std::string& flag = "") {
+    remaining_time = time_limits;
+    count = 0;
+  }
+
   virtual action take_action(const board& state) {
     NoGoState no_go_state(state);
 
-    int act = mcts(no_go_state, 8, simulation_count, true, rave != -1.0, rave);
+    auto start = std::chrono::steady_clock::now();
+
+    int act = mcts(remaining_time, count, 15, no_go_state, 10, simulation_count,
+                   true, rave != -1.0, rave);
+
+    auto end = std::chrono::steady_clock::now();
+    remaining_time -=
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    count += 1;
+
     if (act == -1) return action();
     return action::place(act, who);
   }
@@ -140,6 +161,9 @@ class MCTSAgent : public agent {
   int simulation_count = 100;
   double rave = -1.0;
   board::piece_type who;
+  std::chrono::milliseconds time_limits;
+  std::chrono::milliseconds remaining_time;
+  int count = -1;
 };
 
 agent* make_agent(const std::string& args = "") {

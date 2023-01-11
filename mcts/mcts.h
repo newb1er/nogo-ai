@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <chrono>
 #include <functional>
 #include <map>
 #include <memory>
@@ -47,13 +48,12 @@ class State {
 
 class NoGoState : public State {
  public:
-  NoGoState(board b) : State(-1.0), board_(b) {}
-  NoGoState(const NoGoState& s) : State(-1.0), board_(s.board_) {}
-  NoGoState(NoGoState&& s) : State(-1.0), board_(std::move(s.board_)) {}
+  NoGoState(board b) : State(0.0), board_(b) {}
+  NoGoState(const NoGoState& s) : State(0.0), board_(s.board_) {}
+  NoGoState(NoGoState&& s) : State(0.0), board_(std::move(s.board_)) {}
   NoGoState& operator=(const NoGoState& s) {
     if (this != &s) {
       board_ = s.board_;
-      reward_ = -1.0;
     }
 
     return *this;
@@ -61,7 +61,6 @@ class NoGoState : public State {
   NoGoState& operator=(NoGoState&& s) {
     if (this != &s) {
       board_ = std::move(s.board_);
-      reward_ = -1.0;
     }
 
     return *this;
@@ -109,8 +108,12 @@ class MCTSTree {
 
  public:
   MCTSTree() : init_(false), rave_(false) {}
-  MCTSTree(bool using_rave, double rave_bias)
-      : init_(false), rave_(using_rave), rave_bias_(rave_bias) {}
+  MCTSTree(bool using_rave, double rave_bias, unsigned rave_depth,
+           std::chrono::time_point<std::chrono::steady_clock> deadline)
+      : init_(false),
+        rave_(using_rave),
+        rave_bias_(rave_bias),
+        deadline(deadline) {}
   void reset() { init_ = false; }
   void init(State&);
   void step(const int&);
@@ -121,7 +124,7 @@ class MCTSTree {
   void simulate(State&, int, bool);
   Node::NodePtr selection(Node::NodePtr, bool);
   Node::NodePtr expansion(std::weak_ptr<Node>);
-  double rollout(Node::NodePtr);
+  double rollout(Node::NodePtr, bool);
   void backpropagation(Node::NodePtr, double, bool);
 
  protected:
@@ -131,7 +134,10 @@ class MCTSTree {
   bool init_;
   bool rave_;
   double rave_bias_;
+  unsigned rave_depth;
+  std::chrono::time_point<std::chrono::steady_clock> deadline;
   MCTSNodePtr root;
 };
 
-int mcts(State&, int, int, bool, bool, double);
+int mcts(std::chrono::milliseconds, int, int, State&, int, int, bool, bool,
+         double);
