@@ -52,8 +52,22 @@
         "sstream": "cpp",
         "stdexcept": "cpp",
         "streambuf": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "bitset": "cpp",
+        "cinttypes": "cpp",
+        "complex": "cpp",
+        "cstring": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp",
+        "shared_mutex": "cpp",
+        "typeindex": "cpp"
     },
 
-    "C_Cpp.clang_format_style": "google"
+    "C_Cpp.clang_format_style": "google",
+    "python.formatting.provider": "yapf"
 }
