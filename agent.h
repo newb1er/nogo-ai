@@ -120,7 +120,6 @@ class MCTSAgent : public agent {
     }
     if (meta.find("rave") != meta.end()) {
       rave = double(meta["rave"]);
-      std::cout << "rave: " << rave << std::endl;
     }
     if (meta.find("time") != meta.end()) {
       time_limits = std::chrono::milliseconds(int(meta["time"]));
