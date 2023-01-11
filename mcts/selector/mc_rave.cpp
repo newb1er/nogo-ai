@@ -21,22 +21,25 @@ std::tuple<double, int> amaf(const NodeList& list) {
   return std::tie(amaf_value, amaf_visits);
 }
 
-Node::NodePtr selector(Node::NodePtr node, double bias, bool minmax,
-                       MCTSTree::NodeTable& table) {
+Node::NodePtr selector(Node::NodePtr node, double bias, unsigned rave_depth,
+                       bool minmax, MCTSTree::NodeTable& table) {
   std::vector<size_t> order(node->kids.size());
   std::generate(order.begin(), order.end(), [n = 0]() mutable { return n++; });
   std::shuffle(order.begin(), order.end(),
                std::mt19937(std::random_device()()));
 
   double revert_ = minmax ? -1.0 : 1.0;
-  auto& kids = node->kids;
+  auto kids = node->kids;
   double l_explore = sqrt(2 * log(node->visits));
 
   auto n = kids.front();
-  auto& node_list = table[n->state->GetAction()];
+  auto node_list = table[n->state->GetAction()];
   NodeList list;
   std::copy_if(node_list.begin(), node_list.end(), std::back_inserter(list),
-               [node](Node::NodePtr& n_) { return n_->depth > node->depth; });
+               [node, rave_depth](Node::NodePtr& n_) {
+                 return n_->depth > node->depth &&
+                        n_->depth < (node->depth + rave_depth);
+               });
   auto [amaf_value, amaf_visits] = amaf(list);
 
   double rave_value = (revert_ * amaf_value / (double)amaf_visits);
@@ -67,7 +70,10 @@ Node::NodePtr selector(Node::NodePtr node, double bias, bool minmax,
     node_list = table[n->state->GetAction()];
     list.clear();
     std::copy_if(node_list.begin(), node_list.end(), std::back_inserter(list),
-                 [node](Node::NodePtr& n_) { return n_->depth > node->depth; });
+                 [node, rave_depth](Node::NodePtr& n_) {
+                   return n_->depth > node->depth &&
+                          n_->depth < (node->depth + rave_depth);
+                 });
     std::tie(amaf_value, amaf_visits) = amaf(list);
 
     if (amaf_visits == 0) return n;
